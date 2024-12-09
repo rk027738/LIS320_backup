@@ -1,4 +1,4 @@
 package UserManagement;
 
-public class Sample {
+public class User {
 }
