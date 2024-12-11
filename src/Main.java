@@ -49,5 +49,21 @@ public class Main {
         librarySystem.borrowBookManually(1, 2);
         System.out.println("Catalog after borrowing:");
         librarySystem.viewCatalog();
+
+        // Test 6: Return a Book
+        System.out.println("\nTest 6: Return a Book");
+        librarySystem.returnBookManually(1);
+        System.out.println("Catalog after returning:");
+        librarySystem.viewCatalog();
+
+        // Test 7: View Loans
+        System.out.println("\nTest 7: View Loans");
+        librarySystem.viewLoans();
+
+        // Test 8: Remove Non-Existent Book
+        System.out.println("\nTest 8: Remove Non-Existent Book");
+        librarySystem.removeBookManually(10);
+        System.out.println("Catalog after attempting to remove Book ID 10:");
+        librarySystem.viewCatalog();
     }
 }
