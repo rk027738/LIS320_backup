@@ -38,5 +38,16 @@ public class Main {
         librarySystem.removeBookManually(2);
         System.out.println("Catalog after removing Book ID 2:");
         librarySystem.viewCatalog();
+
+        // Test 4: searching for a book
+        System.out.println("\nTest 4: Search for a Book");
+        System.out.println("Search results for keyword '1984':");
+        librarySystem.searchBookByKeyword("1984");
+
+        // Test 5: borrowing a book
+        System.out.println("\nTest 5: Borrow a Book");
+        librarySystem.borrowBookManually(1, 2);
+        System.out.println("Catalog after borrowing:");
+        librarySystem.viewCatalog();
     }
 }
