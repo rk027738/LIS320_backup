@@ -16,7 +16,7 @@ public class Loan {
         this.bookId = bookId;
         this.userId = userId;
         this.issueDate = issueDate;
-        this.dueDate = dueDate;
+        this.dueDate = issueDate.plusDays(7); // fixed loan duration to 7 days to prevent manual setting
         this.isReturned = false;  // Default is that the book hasn't been returned
     }
 
