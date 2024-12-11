@@ -134,7 +134,7 @@ public class LibrarySystem {
         }
     }
 
-    private void viewCatalog() {
+    public void viewCatalog() {
         System.out.println("\nCatalog:");
         for (Book book : catalog.getBooks()) {
             System.out.println(book);
@@ -173,7 +173,7 @@ public class LibrarySystem {
         System.out.println("Book removed successfully!");
     }
 
-    private void viewLoans() {
+    public void viewLoans() {
         System.out.println("\nLoans:");
         for (Loan loan : loans) {
             System.out.println(loan);
@@ -223,5 +223,76 @@ public class LibrarySystem {
     private void logout() {
         System.out.println("Logging out...");
         loggedInUser = null;
+    }
+
+    // added new methods to test the code in Main class without using scanner
+
+    public void addBookManually(int id, String title, String author) {
+        // checks if the book ID already exists
+        if (catalog.getBooks().stream().anyMatch(book -> book.getId() == id)) {
+            System.out.println("Book ID " + id + " already exists. Cannot add duplicate book.");
+            return;
+        }
+        // adds book to catalog
+        Book newBook = new Book(id, title, author, true);
+        catalog.addBook(newBook);
+        System.out.println("Book added: " + newBook);
+    }
+
+    public void removeBookManually(int bookId) {
+        boolean removed = catalog.getBooks().removeIf(book -> book.getId() == bookId);
+        if (removed) {
+            System.out.println("Book with ID " + bookId + " removed successfully.");
+        } else {
+            System.out.println("Book with ID " + bookId + " not found.");
+        }
+    }
+
+    public void borrowBookManually(int bookId, int userId) {
+        Book bookToBorrow = catalog.getBooks().stream()
+                .filter(book -> book.getId() == bookId && book.isAvailable())
+                .findFirst()
+                .orElse(null);
+
+        if (bookToBorrow == null) {
+            System.out.println("Book with ID " + bookId + " is not available for borrowing.");
+            return;
+        }
+
+        Loan loan = new Loan(loans.size() + 1, bookId, userId, LocalDate.now(), LocalDate.now().plusDays(14));
+        loans.add(loan);
+        bookToBorrow.setAvailable(false);
+        System.out.println("Book borrowed successfully: " + bookToBorrow);
+        System.out.println("Loan details: " + loan);
+    }
+
+    public void searchBookByKeyword(String keyword) {
+        List<Book> results = catalog.searchBooks(keyword);
+        if (results.isEmpty()) {
+            System.out.println("No books found matching the keyword: " + keyword);
+        } else {
+            System.out.println("Search results:");
+            results.forEach(System.out::println);
+        }
+    }
+
+    public void returnBookManually(int loanId) {
+        Loan loanToReturn = loans.stream()
+                .filter(loan -> loan.getLoanId() == loanId && !loan.isReturned())
+                .findFirst()
+                .orElse(null);
+
+        if (loanToReturn == null) {
+            System.out.println("Invalid Loan ID or the book is already returned.");
+            return;
+        }
+
+        loanToReturn.setReturned(true);
+        catalog.getBooks().stream()
+                .filter(book -> book.getId() == loanToReturn.getBookId())
+                .findFirst()
+                .ifPresent(book -> book.setAvailable(true));
+
+        System.out.println("Book returned successfully: Loan ID " + loanToReturn.getLoanId());
     }
 }
