@@ -1,5 +1,5 @@
 import LoanManagement.Loan;
-
+import SystemManagement.LibrarySystem;
 import java.time.LocalDate;
 
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
@@ -18,5 +18,25 @@ public class Main {
 
         // Display the updated loan details
         System.out.println(loan1);
+
+        LibrarySystem librarySystem = new LibrarySystem();
+
+
+        // Test 1
+        System.out.println("Test 1: View Initial Catalog");
+        System.out.println("Initial Catalog:");
+        librarySystem.viewCatalog();
+
+        // Test 2
+        System.out.println("\nTest 2: Add a Book");
+        librarySystem.addBookManually(4, "Clean Code", "Robert C. Martin");
+        System.out.println("Catalog after adding 'Clean Code':");
+        librarySystem.viewCatalog();
+
+        // Test 3
+        System.out.println("\nTest 3: Remove a Book");
+        librarySystem.removeBookManually(2);
+        System.out.println("Catalog after removing Book ID 2:");
+        librarySystem.viewCatalog();
     }
 }
