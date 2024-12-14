@@ -81,7 +81,7 @@ public class LibrarySystem {
         }
     }
 
-    private User authenticate(String username, String password) {
+    User authenticate(String username, String password) {
         for (User user : users) {
             if (user.getUsername().equals(username) && user.getPassword().equals(password)) {
                 return user;
@@ -140,6 +140,18 @@ public class LibrarySystem {
             System.out.println(book);
         }
     }
+
+    //new method
+    public Catalog getCatalog() {
+        return catalog;
+    }
+
+    //new method
+    public List<Loan> getLoans() {
+        return loans;
+    }
+
+
 
     private void searchBook(Scanner scanner) {
         System.out.print("Enter keyword to search: ");
