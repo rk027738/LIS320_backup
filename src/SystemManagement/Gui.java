@@ -7,8 +7,6 @@ import UserManagement.Admin;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.util.List;
 
 public class Gui {
@@ -77,6 +75,9 @@ public class Gui {
         JButton searchBookButton = new JButton("Search Book");
         JButton addBookButton = new JButton("Add Book");
         JButton removeBookButton = new JButton("Remove Book");
+        // added new buttons for add/remove user
+        JButton addUserButton = new JButton("Add User");
+        JButton removeUserButton = new JButton("Remove User");
         JButton viewLoansButton = new JButton("View Loans");
         JButton logoutButton = new JButton("Logout");
 
@@ -84,6 +85,9 @@ public class Gui {
         panel.add(searchBookButton);
         panel.add(addBookButton);
         panel.add(removeBookButton);
+        //added add/remove user buttons to the gui panel
+        panel.add(addUserButton);
+        panel.add(removeUserButton);
         panel.add(viewLoansButton);
         panel.add(logoutButton);
 
@@ -93,6 +97,9 @@ public class Gui {
         searchBookButton.addActionListener(e -> searchBook());
         addBookButton.addActionListener(e -> addBook());
         removeBookButton.addActionListener(e -> removeBook());
+        // added action listeners for add/remove user
+        addUserButton.addActionListener(e -> addUser());
+        removeUserButton.addActionListener(e -> removeUser());
         viewLoansButton.addActionListener(e -> viewLoans());
         logoutButton.addActionListener(e -> logout());
 
@@ -219,6 +226,56 @@ public class Gui {
             loansDisplay.append(loan.toString()).append("\n");
         }
         JOptionPane.showMessageDialog(frame, loansDisplay.toString(), "Loans", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void addUser() {
+        try {
+            String idInput = JOptionPane.showInputDialog(frame, "Enter User ID:", "Add User", JOptionPane.QUESTION_MESSAGE);
+            String username = JOptionPane.showInputDialog(frame, "Enter Username:", "Add User", JOptionPane.QUESTION_MESSAGE);
+            String password = JOptionPane.showInputDialog(frame, "Enter Password:", "Add User", JOptionPane.QUESTION_MESSAGE);
+            String[] roles = {"admin", "user"};
+            String role = (String) JOptionPane.showInputDialog(frame, "Select Role:", "Add User", JOptionPane.QUESTION_MESSAGE, null, roles, roles[1]);
+
+            if (idInput != null && username != null && password != null && role != null) {
+                int id = Integer.parseInt(idInput);
+
+                // check if the user already exists
+                for (User user : librarySystem.getUsers()) {
+                    if (user.getId() == id) {
+                        JOptionPane.showMessageDialog(frame, "User ID already exists. Cannot add duplicate user.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                }
+
+                // adds a new user to the db
+                User newUser = role.equals("admin") ? new Admin(id, username, password, role) : new User(id, username, password, role);
+                librarySystem.getUsers().add(newUser);
+                JOptionPane.showMessageDialog(frame, "User added successfully: " + username, "Success", JOptionPane.INFORMATION_MESSAGE);
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(frame, "Invalid User ID. Please enter a number.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void removeUser() {
+        try {
+            String idInput = JOptionPane.showInputDialog(frame, "Enter User ID to remove:", "Remove User", JOptionPane.QUESTION_MESSAGE);
+            if (idInput != null) {
+                int id = Integer.parseInt(idInput);
+
+                // removes the user with the gived id
+                boolean removed = librarySystem.getUsers().removeIf(user -> user.getId() == id);
+
+                // displays messages to inform the user how the op. went
+                if (removed) {
+                    JOptionPane.showMessageDialog(frame, "User with ID " + id + " removed successfully.", "Success", JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(frame, "User with ID " + id + " not found.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(frame, "Invalid User ID. Please enter a number.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     public static void main(String[] args) {

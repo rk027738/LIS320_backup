@@ -151,7 +151,9 @@ public class LibrarySystem {
         return loans;
     }
 
-
+    public List<User> getUsers() {
+        return users;
+    }
 
     private void searchBook(Scanner scanner) {
         System.out.print("Enter keyword to search: ");
