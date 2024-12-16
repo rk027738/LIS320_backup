@@ -7,11 +7,14 @@ import UserManagement.Admin;
 
 import javax.swing.*;
 import java.awt.*;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 
 public class Gui {
 
-    private LibrarySystem librarySystem;
+    private final LibrarySystem librarySystem;
     private JFrame frame;
     private User loggedInUser;
 
@@ -141,6 +144,7 @@ public class Gui {
         loggedInUser = null;
         frame.dispose();
         initializeLogin();
+        librarySystem.setLoggedInUser(null);
     }
 
     private void showCatalog() {
@@ -230,32 +234,49 @@ public class Gui {
 
     private void addUser() {
         try {
+            // Get user input from dialogs
             String idInput = JOptionPane.showInputDialog(frame, "Enter User ID:", "Add User", JOptionPane.QUESTION_MESSAGE);
             String username = JOptionPane.showInputDialog(frame, "Enter Username:", "Add User", JOptionPane.QUESTION_MESSAGE);
             String password = JOptionPane.showInputDialog(frame, "Enter Password:", "Add User", JOptionPane.QUESTION_MESSAGE);
             String[] roles = {"admin", "user"};
             String role = (String) JOptionPane.showInputDialog(frame, "Select Role:", "Add User", JOptionPane.QUESTION_MESSAGE, null, roles, roles[1]);
 
+            // Ensure no input is null
             if (idInput != null && username != null && password != null && role != null) {
                 int id = Integer.parseInt(idInput);
 
-                // check if the user already exists
-                for (User user : librarySystem.getUsers()) {
-                    if (user.getId() == id) {
+                // Check if the user already exists in the database
+                String checkQuery = "SELECT COUNT(*) FROM users WHERE id = ?";
+                try (PreparedStatement checkStmt = librarySystem.getConnection().prepareStatement(checkQuery)) {
+                    checkStmt.setInt(1, id);
+                    ResultSet rs = checkStmt.executeQuery();
+                    if (rs.next() && rs.getInt(1) > 0) {
                         JOptionPane.showMessageDialog(frame, "User ID already exists. Cannot add duplicate user.", "Error", JOptionPane.ERROR_MESSAGE);
                         return;
                     }
                 }
 
-                // adds a new user to the db
-                User newUser = role.equals("admin") ? new Admin(id, username, password, role) : new User(id, username, password, role);
-                librarySystem.getUsers().add(newUser);
+                // Insert the new user into the database
+                String insertQuery = "INSERT INTO users (id, username, password, role) VALUES (?, ?, ?, ?)";
+                try (PreparedStatement insertStmt = librarySystem.getConnection().prepareStatement(insertQuery)) {
+                    insertStmt.setInt(1, id);
+                    insertStmt.setString(2, username);
+                    insertStmt.setString(3, password); // Consider hashing passwords for security
+                    insertStmt.setString(4, role);
+                    insertStmt.executeUpdate();
+                }
+
+                // Show success message
                 JOptionPane.showMessageDialog(frame, "User added successfully: " + username, "Success", JOptionPane.INFORMATION_MESSAGE);
             }
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(frame, "Invalid User ID. Please enter a number.", "Error", JOptionPane.ERROR_MESSAGE);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(frame, "Error adding user to the database: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
+
 
     private void removeUser() {
         try {
@@ -263,25 +284,44 @@ public class Gui {
             if (idInput != null) {
                 int id = Integer.parseInt(idInput);
 
-                // removes the user with the gived id
-                boolean removed = librarySystem.getUsers().removeIf(user -> user.getId() == id);
+                // Prevent removing the root user with ID = 1
+                if (id == 1) {
+                    throw new UnsupportedOperationException("The root user cannot be removed.");
+                }
 
-                // displays messages to inform the user how the op. went
-                if (removed) {
-                    JOptionPane.showMessageDialog(frame, "User with ID " + id + " removed successfully.", "Success", JOptionPane.INFORMATION_MESSAGE);
-                } else {
-                    JOptionPane.showMessageDialog(frame, "User with ID " + id + " not found.", "Error", JOptionPane.ERROR_MESSAGE);
+                // Check if the user exists in the database
+                String checkQuery = "SELECT COUNT(*) FROM users WHERE id = ?";
+                try (PreparedStatement checkStmt = librarySystem.getConnection().prepareStatement(checkQuery)) {
+                    checkStmt.setInt(1, id);
+                    ResultSet rs = checkStmt.executeQuery();
+                    if (rs.next() && rs.getInt(1) == 0) {
+                        JOptionPane.showMessageDialog(frame, "User with ID " + id + " not found.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                }
+
+                // Remove the user from the database
+                String deleteQuery = "DELETE FROM users WHERE id = ?";
+                try (PreparedStatement deleteStmt = librarySystem.getConnection().prepareStatement(deleteQuery)) {
+                    deleteStmt.setInt(1, id);
+                    int rowsAffected = deleteStmt.executeUpdate();
+
+                    // Display messages based on the outcome
+                    if (rowsAffected > 0) {
+                        JOptionPane.showMessageDialog(frame, "User with ID " + id + " removed successfully.", "Success", JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(frame, "User with ID " + id + " not found.", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
                 }
             }
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(frame, "Invalid User ID. Please enter a number.", "Error", JOptionPane.ERROR_MESSAGE);
+        } catch (UnsupportedOperationException e) {
+            JOptionPane.showMessageDialog(frame, e.getMessage(), "Operation Not Allowed", JOptionPane.ERROR_MESSAGE);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(frame, "Error removing user from the database: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    public static void main(String[] args) {
-        LibrarySystem librarySystem = new LibrarySystem();
-        new Gui(librarySystem);
-    }
 }
-
-
