@@ -6,278 +6,185 @@ import LoanManagement.Loan;
 import UserManagement.Admin;
 import UserManagement.User;
 
-import java.time.LocalDate;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 
 public class LibrarySystem {
-    private final Catalog catalog;
-    private final List<User> users;
-    private final List<Loan> loans;
-    private User loggedInUser;
+    public Connection getConnection() {
+        return connection;
+    }
+
+    private final Connection connection; // Shared database connection
+    private final Catalog catalog;      // Handles book-related operations
+    private final List<Loan> loans;     // Manages loan-related data
+    private User loggedInUser;          // Tracks the currently logged-in user
 
     public LibrarySystem() {
-        this.catalog = new Catalog();
-        this.users = new ArrayList<>();
-        this.loans = new ArrayList<>();
-        this.loggedInUser = null;
+        try {
+            // Establish the database connection
+            connection = DriverManager.getConnection(
+                    "jdbc:mysql://sql7.freesqldatabase.com:3306/sql7752156",
+                    "sql7752156",
+                    "NmwMfs5UnR"
+            );
+            new User(connection);
+            // Initialize Catalog with the shared connection
+            catalog = new Catalog(connection);
+            // Initialize loans
+            loans = new ArrayList<>();
+            // Add sample data
+            initializeSampleData();
 
-        initializeSampleData();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to connect to the database", e);
+        }
     }
 
+    /**
+     * Adds sample data for testing purposes.
+     */
     private void initializeSampleData() {
-        // added some booksto the db
-        catalog.addBook(new Book(1, "1984", "George Orwell", true));
-        catalog.addBook(new Book(2, "To Kill a Mockingbird", "Harper Lee", true));
-        catalog.addBook(new Book(3, "The Great Gatsby", "F. Scott Fitzgerald", true));
-
-        // added some users to the db
-        users.add(new Admin(1, "admin", "password", "admin"));
-        users.add(new User(2, "user1", "password", "user"));
+        // Add sample books
+//        catalog.addBook(new Book(1, "1984", "George Orwell", true));
+//        catalog.addBook(new Book(2, "To Kill a Mockingbird", "Harper Lee", true));
+//        catalog.addBook(new Book(3, "The Great Gatsby", "F. Scott Fitzgerald", true));
     }
 
-    public void run() {
-        Scanner scanner = new Scanner(System.in);
-        while (true) {
-            if (loggedInUser == null) {
-                login(scanner);
-            } else {
-                if (loggedInUser instanceof Admin) {
-                    adminMenu(scanner);
+
+
+    /**
+     * Authenticates a user by their username and password.
+     *
+     * @param username the entered username
+     * @param password the entered password
+     * @return a User object if authentication succeeds, null otherwise
+     */
+//    public User authenticate(String username, String password) {
+//        try {
+//            // Query the database to validate user credentials
+//            String query = "SELECT * FROM users WHERE username = ? AND password = ?";
+//            PreparedStatement stmt = connection.prepareStatement(query);
+//            stmt.setString(1, username);
+//            stmt.setString(2, password);
+//            ResultSet rs = stmt.executeQuery();
+//
+//            if (rs.next()) {
+//                String role = rs.getString("role");
+//                int userId = rs.getInt("id");
+//
+//                // Return an Admin or User object based on the role
+//                if ("admin".equalsIgnoreCase(role)) {
+//                    return new Admin(userId, username, password, role);
+//                } else {
+//                    return new User(userId, username, password, role);
+//                }
+//            }
+//
+//        } catch (SQLException e) {
+//            e.printStackTrace();
+//        }
+//
+//        return null; // Authentication failed
+//    }
+
+    public User authenticate(String username, String password) {
+        try {
+            // Debugging: Print the username and password being used for login
+            System.out.println("Attempting login with username: " + username + " and password: " + password);
+
+            // Query to check for matching username and password
+            String query = "SELECT * FROM users WHERE username = ? AND password = ?";
+            PreparedStatement stmt = connection.prepareStatement(query);
+            stmt.setString(1, username);
+            stmt.setString(2, password);
+
+            // Execute the query
+            ResultSet rs = stmt.executeQuery();
+
+            // Check if a matching user was found
+            if (rs.next()) {
+                String role = rs.getString("role");
+                int userId = rs.getInt("id");
+                System.out.println("Login successful! User ID: " + userId + ", Role: " + role);
+
+                // Return User or Admin based on role
+                if ("admin".equalsIgnoreCase(role)) {
+                    return new Admin(userId, username, password, role);
                 } else {
-                    userMenu(scanner);
+                    return new User(userId, username, password, role);
                 }
-            }
-        }
-    }
-
-    private void login(Scanner scanner) {
-        System.out.println("Welcome to the Library Information System!");
-        System.out.println("1. Login");
-        System.out.println("2. Exit");
-        System.out.print("Enter your choice: ");
-        int choice = scanner.nextInt();
-        scanner.nextLine();
-
-        if (choice == 1) {
-            System.out.print("Enter username: ");
-            String username = scanner.nextLine();
-            System.out.print("Enter password: ");
-            String password = scanner.nextLine();
-
-            User user = authenticate(username, password);
-            if (user != null) {
-                loggedInUser = user;
-                System.out.println("Login successful! Welcome, " + user.getUsername());
             } else {
-                System.out.println("Invalid credentials. Please try again.");
+                System.out.println("Invalid credentials. No user found with the provided details.");
             }
-        } else if (choice == 2) {
-            System.out.println("Goodbye!");
-            System.exit(0);
-        } else {
-            System.out.println("Invalid choice. Please try again.");
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
+        return null; // Return null if login fails
     }
-
-    User authenticate(String username, String password) {
-        for (User user : users) {
-            if (user.getUsername().equals(username) && user.getPassword().equals(password)) {
-                return user;
-            }
-        }
-        return null;
-    }
-
-    private void adminMenu(Scanner scanner) {
-        System.out.println("\nAdmin Menu:");
-        System.out.println("1. View Catalog");
-        System.out.println("2. Search Book");
-        System.out.println("3. Add Book");
-        System.out.println("4. Remove Book");
-        System.out.println("5. View Loans");
-        System.out.println("6. Logout");
-        System.out.print("Enter your choice: ");
-        int choice = scanner.nextInt();
-        scanner.nextLine();
-
-        switch (choice) {
-            case 1 -> viewCatalog();
-            case 2 -> searchBook(scanner);
-            case 3 -> addBook(scanner);
-            case 4 -> removeBook(scanner);
-            case 5 -> viewLoans();
-            case 6 -> logout();
-            default -> System.out.println("Invalid choice. Please try again.");
-        }
-    }
-
-    private void userMenu(Scanner scanner) {
-        System.out.println("\nUser Menu:");
-        System.out.println("1. View Catalog");
-        System.out.println("2. Search Book");
-        System.out.println("3. Borrow Book");
-        System.out.println("4. Return Book");
-        System.out.println("5. Logout");
-        System.out.print("Enter your choice: ");
-        int choice = scanner.nextInt();
-        scanner.nextLine();
-
-        switch (choice) {
-            case 1 -> viewCatalog();
-            case 2 -> searchBook(scanner);
-            case 3 -> borrowBook(scanner);
-            case 4 -> returnBook(scanner);
-            case 5 -> logout();
-            default -> System.out.println("Invalid choice. Please try again.");
-        }
-    }
-
-    public void viewCatalog() {
-        System.out.println("\nCatalog:");
-        for (Book book : catalog.getBooks()) {
-            System.out.println(book);
-        }
-    }
-
-    //new method
-    public Catalog getCatalog() {
-        return catalog;
-    }
-
-    //new method
-    public List<Loan> getLoans() {
-        return loans;
-    }
-
-    public List<User> getUsers() {
-        return users;
-    }
-
-    private void searchBook(Scanner scanner) {
-        System.out.print("Enter keyword to search: ");
-        String keyword = scanner.nextLine();
-        List<Book> results = catalog.searchBooks(keyword);
-        if (results.isEmpty()) {
-            System.out.println("No books found matching the keyword.");
-        } else {
-            for (Book book : results) {
-                System.out.println(book);
-            }
-        }
-    }
-
-    private void addBook(Scanner scanner) {
-        System.out.print("Enter Book ID: ");
-        int id = scanner.nextInt();
-        scanner.nextLine();
-        System.out.print("Enter Title: ");
-        String title = scanner.nextLine();
-        System.out.print("Enter Author: ");
-        String author = scanner.nextLine();
-        catalog.addBook(new Book(id, title, author, true));
-        System.out.println("Book added successfully!");
-    }
-
-    private void removeBook(Scanner scanner) {
-        System.out.print("Enter Book ID to remove: ");
-        int id = scanner.nextInt();
-        catalog.removeBook(id);
-        System.out.println("Book removed successfully!");
-    }
-
-    public void viewLoans() {
-        System.out.println("\nLoans:");
-        for (Loan loan : loans) {
-            System.out.println(loan);
-        }
-    }
-
-    private void borrowBook(Scanner scanner) {
-        System.out.print("Enter Book ID to borrow: ");
-        int bookId = scanner.nextInt();
-        scanner.nextLine();
-        Book book = catalog.getBooks().stream()
-                .filter(b -> b.getId() == bookId && b.isAvailable())
-                .findFirst()
-                .orElse(null);
-
-        if (book == null) {
-            System.out.println("Book is not available.");
-        } else {
-            book.setAvailable(false);
-            Loan loan = new Loan(loans.size() + 1, bookId, loggedInUser.getId(), LocalDate.now(), LocalDate.now().plusDays(14));
-            loans.add(loan);
-            System.out.println("Book borrowed successfully! Loan ID: " + loan.getLoanId());
-        }
-    }
-
-    private void returnBook(Scanner scanner) {
-        System.out.print("Enter Loan ID to return: ");
-        int loanId = scanner.nextInt();
-        scanner.nextLine();
-        Loan loan = loans.stream()
-                .filter(l -> l.getLoanId() == loanId && !l.isReturned())
-                .findFirst()
-                .orElse(null);
-
-        if (loan == null) {
-            System.out.println("Invalid Loan ID or the book is already returned.");
-        } else {
-            loan.setReturned(true);
-            catalog.getBooks().stream()
-                    .filter(b -> b.getId() == loan.getBookId())
-                    .findFirst()
-                    .ifPresent(b -> b.setAvailable(true));
-            System.out.println("Book returned successfully!");
-        }
-    }
-
-    private void logout() {
-        System.out.println("Logging out...");
-        loggedInUser = null;
-    }
-
-    // added new methods to test the code in Main class without using scanner
 
     public void addBookManually(int id, String title, String author) {
-        // checks if the book ID already exists
-        if (catalog.getBooks().stream().anyMatch(book -> book.getId() == id)) {
-            System.out.println("Book ID " + id + " already exists. Cannot add duplicate book.");
-            return;
-        }
-        // adds book to catalog
         Book newBook = new Book(id, title, author, true);
-        catalog.addBook(newBook);
-        System.out.println("Book added: " + newBook);
+        catalog.addBook(newBook); // Add book to the database via the Catalog
+        System.out.println("Book added successfully: " + newBook);
     }
 
     public void removeBookManually(int bookId) {
-        boolean removed = catalog.getBooks().removeIf(book -> book.getId() == bookId);
-        if (removed) {
-            System.out.println("Book with ID " + bookId + " removed successfully.");
-        } else {
-            System.out.println("Book with ID " + bookId + " not found.");
-        }
+        catalog.removeBook(bookId); // Remove book from the database via the Catalog
+        System.out.println("Book with ID " + bookId + " removed successfully.");
     }
 
     public void borrowBookManually(int bookId, int userId) {
-        Book bookToBorrow = catalog.getBooks().stream()
-                .filter(book -> book.getId() == bookId && book.isAvailable())
-                .findFirst()
-                .orElse(null);
+        try {
+            // Check if the book is available
+            Book book = catalog.getBooks().stream()
+                    .filter(b -> b.getId() == bookId && b.isAvailable())
+                    .findFirst()
+                    .orElse(null);
 
-        if (bookToBorrow == null) {
-            System.out.println("Book with ID " + bookId + " is not available for borrowing.");
-            return;
+            if (book == null) {
+                System.out.println("Book with ID " + bookId + " is not available for borrowing.");
+                return;
+            }
+
+            // Create a new loan record
+            Loan loan = new Loan(loans.size() + 1, bookId, userId,
+                    java.time.LocalDate.now(),
+                    java.time.LocalDate.now().plusDays(14));
+            loans.add(loan); // Add to the in-memory list
+
+            // Update book availability in the database
+            updateBookAvailability(bookId, false);
+            System.out.println("Book borrowed successfully! Loan details: " + loan);
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("An error occurred while borrowing the book.");
         }
+    }
 
-        Loan loan = new Loan(loans.size() + 1, bookId, userId, LocalDate.now(), LocalDate.now().plusDays(14));
-        loans.add(loan);
-        bookToBorrow.setAvailable(false);
-        System.out.println("Book borrowed successfully: " + bookToBorrow);
-        System.out.println("Loan details: " + loan);
+    public void returnBookManually(int loanId) {
+        try {
+            // Find the loan by its ID
+            Loan loan = loans.stream()
+                    .filter(l -> l.getLoanId() == loanId && !l.isReturned())
+                    .findFirst()
+                    .orElse(null);
+
+            if (loan == null) {
+                System.out.println("Invalid Loan ID or the book is already returned.");
+                return;
+            }
+
+            // Update the loan status
+            loan.setReturned(true);
+
+            // Make the book available again
+            updateBookAvailability(loan.getBookId(), true);
+            System.out.println("Book returned successfully! Loan ID: " + loanId);
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("An error occurred while returning the book.");
+        }
     }
 
     public void searchBookByKeyword(String keyword) {
@@ -290,23 +197,79 @@ public class LibrarySystem {
         }
     }
 
-    public void returnBookManually(int loanId) {
-        Loan loanToReturn = loans.stream()
-                .filter(loan -> loan.getLoanId() == loanId && !loan.isReturned())
-                .findFirst()
-                .orElse(null);
+    public void updateBookAvailability(int bookId, boolean isAvailable) {
+        String query = "UPDATE books SET is_available = ? WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setBoolean(1, isAvailable);
+            stmt.setInt(2, bookId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 
-        if (loanToReturn == null) {
-            System.out.println("Invalid Loan ID or the book is already returned.");
-            return;
+    public List<User> getUsers() {
+        List<User> users = new ArrayList<>();
+        String query = "SELECT * FROM users";
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String username = rs.getString("username");
+                String password = rs.getString("password");
+                String role = rs.getString("role");
+
+                // Check role and create User or Admin objects
+                if ("admin".equalsIgnoreCase(role)) {
+                    users.add(new Admin(id, username, "******", role)); //doesn't show admin passwords.
+                } else {
+                    users.add(new User(id, username, password, role));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
 
-        loanToReturn.setReturned(true);
-        catalog.getBooks().stream()
-                .filter(book -> book.getId() == loanToReturn.getBookId())
-                .findFirst()
-                .ifPresent(book -> book.setAvailable(true));
+        return users;
+    }
 
-        System.out.println("Book returned successfully: Loan ID " + loanToReturn.getLoanId());
+
+
+    /**
+     * Provides access to the catalog for the GUI.
+     *
+     * @return the catalog instance
+     */
+    public Catalog getCatalog() {
+        return catalog;
+    }
+
+    /**
+     * Provides access to the list of loans for the GUI.
+     *
+     * @return the list of loans
+     */
+    public List<Loan> getLoans() {
+        return loans;
+    }
+
+    /**
+     * Sets the currently logged-in user.
+     *
+     * @param user the logged-in user
+     */
+    public void setLoggedInUser(User user) {
+        this.loggedInUser = user;
+    }
+
+    /**
+     * Gets the currently logged-in user.
+     *
+     * @return the logged-in user
+     */
+    public User getLoggedInUser() {
+        return loggedInUser;
     }
 }
