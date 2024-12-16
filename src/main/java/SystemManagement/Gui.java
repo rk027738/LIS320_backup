@@ -199,38 +199,107 @@ public class Gui {
         }
     }
 
+//    private void borrowBook() {
+//        try {
+//            String bookIdInput = JOptionPane.showInputDialog(frame, "Enter Book ID to borrow:", "Borrow Book", JOptionPane.QUESTION_MESSAGE);
+//            if (bookIdInput != null) {
+//                int bookId = Integer.parseInt(bookIdInput);
+//                librarySystem.borrowBookManually(bookId, loggedInUser.getId());
+//            }
+//        } catch (NumberFormatException e) {
+//            JOptionPane.showMessageDialog(frame, "Invalid Book ID. Please enter a number.", "Error", JOptionPane.ERROR_MESSAGE);
+//        }
+//    }
+
     private void borrowBook() {
         try {
             String bookIdInput = JOptionPane.showInputDialog(frame, "Enter Book ID to borrow:", "Borrow Book", JOptionPane.QUESTION_MESSAGE);
             if (bookIdInput != null) {
                 int bookId = Integer.parseInt(bookIdInput);
-                librarySystem.borrowBookManually(bookId, loggedInUser.getId());
+                librarySystem.borrowBook(bookId, loggedInUser.getId()); // Call borrowBook method
+                JOptionPane.showMessageDialog(frame, "Book borrowed successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
             }
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(frame, "Invalid Book ID. Please enter a number.", "Error", JOptionPane.ERROR_MESSAGE);
+        } catch (IllegalArgumentException e) {
+            JOptionPane.showMessageDialog(frame, e.getMessage(), "Invalid Book ID", JOptionPane.ERROR_MESSAGE);
+        } catch (IllegalStateException e) {
+            JOptionPane.showMessageDialog(frame, e.getMessage(), "Borrowing Error", JOptionPane.ERROR_MESSAGE);
         }
     }
+
+
+
+//    private void returnBook() {
+//        try {
+//            String loanIdInput = JOptionPane.showInputDialog(frame, "Enter Loan ID to return:", "Return Book", JOptionPane.QUESTION_MESSAGE);
+//            if (loanIdInput != null) {
+//                int loanId = Integer.parseInt(loanIdInput);
+//                librarySystem.returnBookManually(loanId);
+//            }
+//        } catch (NumberFormatException e) {
+//            JOptionPane.showMessageDialog(frame, "Invalid Loan ID. Please enter a number.", "Error", JOptionPane.ERROR_MESSAGE);
+//        }
+//    }
 
     private void returnBook() {
         try {
-            String loanIdInput = JOptionPane.showInputDialog(frame, "Enter Loan ID to return:", "Return Book", JOptionPane.QUESTION_MESSAGE);
-            if (loanIdInput != null) {
-                int loanId = Integer.parseInt(loanIdInput);
-                librarySystem.returnBookManually(loanId);
+            String bookIdInput = JOptionPane.showInputDialog(frame, "Enter Book ID to return:", "Return Book", JOptionPane.QUESTION_MESSAGE);
+            if (bookIdInput != null) {
+                int bookId = Integer.parseInt(bookIdInput);
+                librarySystem.returnBook(bookId); // Call the LibrarySystem method
+                JOptionPane.showMessageDialog(frame, "Book returned successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
             }
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(frame, "Invalid Loan ID. Please enter a number.", "Error", JOptionPane.ERROR_MESSAGE);
+        } catch (IllegalArgumentException e) {
+            JOptionPane.showMessageDialog(frame, e.getMessage(), "Invalid Book ID", JOptionPane.ERROR_MESSAGE);
+        } catch (IllegalStateException e) {
+            JOptionPane.showMessageDialog(frame, e.getMessage(), "Return Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
+
+
+//    private void viewLoans() {
+//        List<Loan> loans = librarySystem.getLoans();
+//        StringBuilder loansDisplay = new StringBuilder("Loans:\n\n");
+//        for (Loan loan : loans) {
+//            loansDisplay.append(loan.toString()).append("\n");
+//        }
+//        JOptionPane.showMessageDialog(frame, loansDisplay.toString(), "Loans", JOptionPane.INFORMATION_MESSAGE);
+//    }
+
     private void viewLoans() {
-        List<Loan> loans = librarySystem.getLoans();
-        StringBuilder loansDisplay = new StringBuilder("Loans:\n\n");
-        for (Loan loan : loans) {
-            loansDisplay.append(loan.toString()).append("\n");
+        try {
+            // Fetch all loans
+            List<Loan> loans = librarySystem.getAllLoans();
+
+            // Prepare column names for the JTable
+            String[] columnNames = {"Loan ID", "Book ID", "User ID", "Issue Date", "Due Date", "Returned"};
+
+            // Prepare data for the JTable
+            Object[][] data = new Object[loans.size()][6];
+            for (int i = 0; i < loans.size(); i++) {
+                Loan loan = loans.get(i);
+                data[i][0] = loan.getLoanId();
+                data[i][1] = loan.getBookId();
+                data[i][2] = loan.getUserId();
+                data[i][3] = loan.getIssueDate();
+                data[i][4] = loan.getDueDate();
+                data[i][5] = loan.isReturned() ? "Yes" : "No";
+            }
+
+            // Create the JTable and place it in a JScrollPane
+            JTable loanTable = new JTable(data, columnNames);
+            loanTable.setEnabled(false); // Make the table non-editable
+            JScrollPane scrollPane = new JScrollPane(loanTable);
+
+            // Show the table in a JOptionPane
+            JOptionPane.showMessageDialog(frame, scrollPane, "View Loans", JOptionPane.INFORMATION_MESSAGE);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(frame, "Error fetching loans: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
-        JOptionPane.showMessageDialog(frame, loansDisplay.toString(), "Loans", JOptionPane.INFORMATION_MESSAGE);
     }
+
 
     private void addUser() {
         try {
