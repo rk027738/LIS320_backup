@@ -81,6 +81,7 @@ public class Gui {
         // added new buttons for add/remove user
         JButton addUserButton = new JButton("Add User");
         JButton removeUserButton = new JButton("Remove User");
+        JButton viewUsersButton = new JButton("View Users");
         JButton viewLoansButton = new JButton("View Loans");
         JButton logoutButton = new JButton("Logout");
 
@@ -91,6 +92,7 @@ public class Gui {
         //added add/remove user buttons to the gui panel
         panel.add(addUserButton);
         panel.add(removeUserButton);
+        panel.add(viewUsersButton);
         panel.add(viewLoansButton);
         panel.add(logoutButton);
 
@@ -103,6 +105,7 @@ public class Gui {
         // added action listeners for add/remove user
         addUserButton.addActionListener(e -> addUser());
         removeUserButton.addActionListener(e -> removeUser());
+        viewUsersButton.addActionListener(e -> viewUsers());
         viewLoansButton.addActionListener(e -> viewLoans());
         logoutButton.addActionListener(e -> logout());
 
@@ -147,14 +150,46 @@ public class Gui {
         librarySystem.setLoggedInUser(null);
     }
 
+    // private void showCatalog() {
+    //     List<Book> books = librarySystem.getCatalog().getBooks();
+    //     StringBuilder catalogDisplay = new StringBuilder("Books in the Catalog:\n\n");
+    //     for (Book book : books) {
+    //         catalogDisplay.append(book.toString()).append("\n");
+    //     }
+    //     JOptionPane.showMessageDialog(frame, catalogDisplay.toString(), "Catalog", JOptionPane.INFORMATION_MESSAGE);
+    // }
+
     private void showCatalog() {
-        List<Book> books = librarySystem.getCatalog().getBooks();
-        StringBuilder catalogDisplay = new StringBuilder("Books in the Catalog:\n\n");
-        for (Book book : books) {
-            catalogDisplay.append(book.toString()).append("\n");
+        try {
+            // Fetch the list of books from the catalog
+            List<Book> books = librarySystem.getCatalog().getBooks();
+    
+            // Define column names for the JTable
+            String[] columnNames = {"Book ID", "Title", "Author", "Available"};
+    
+            // Prepare data for the JTable
+            Object[][] data = new Object[books.size()][4];
+            for (int i = 0; i < books.size(); i++) {
+                Book book = books.get(i);
+                data[i][0] = book.getId();
+                data[i][1] = book.getTitle();
+                data[i][2] = book.getAuthor();
+                data[i][3] = book.isAvailable() ? "Yes" : "No";
+            }
+    
+            // Create the JTable and place it in a JScrollPane
+            JTable catalogTable = new JTable(data, columnNames);
+            catalogTable.setEnabled(false); // Make the table non-editable
+            JScrollPane scrollPane = new JScrollPane(catalogTable);
+    
+            // Display the table in a JOptionPane
+            JOptionPane.showMessageDialog(frame, scrollPane, "View Catalog", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(frame, "Error fetching catalog: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
-        JOptionPane.showMessageDialog(frame, catalogDisplay.toString(), "Catalog", JOptionPane.INFORMATION_MESSAGE);
     }
+    
 
     private void searchBook() {
         String keyword = JOptionPane.showInputDialog(frame, "Enter a keyword to search for books:", "Search Book", JOptionPane.QUESTION_MESSAGE);
@@ -392,5 +427,30 @@ public class Gui {
             JOptionPane.showMessageDialog(frame, "Error removing user from the database: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
+
+    private void viewUsers() {
+        try {
+            List<User> users = librarySystem.getUsers();
+    
+            String[] columnNames = {"User ID", "Username", "Role"};
+    
+            Object[][] data = new Object[users.size()][3];
+            for (int i = 0; i < users.size(); i++) {
+                User user = users.get(i);
+                data[i][0] = user.getId();
+                data[i][1] = user.getUsername();
+                data[i][2] = user.getRole();
+            }
+    
+            JTable userTable = new JTable(data, columnNames);
+            userTable.setEnabled(false); // Make the table non-editable
+            JScrollPane scrollPane = new JScrollPane(userTable);
+    
+            JOptionPane.showMessageDialog(frame, scrollPane, "View Users", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(frame, "Error fetching users: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }    
 
 }
