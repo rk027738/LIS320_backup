@@ -7,6 +7,7 @@ import UserManagement.Admin;
 import UserManagement.User;
 
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +36,8 @@ public class LibrarySystem {
             loans = new ArrayList<>();
             // Add sample data
             initializeSampleData();
+            //Initialize Loan table
+            initializeLoansTable();
 
         } catch (SQLException e) {
             throw new RuntimeException("Failed to connect to the database", e);
@@ -134,58 +137,158 @@ public class LibrarySystem {
         System.out.println("Book with ID " + bookId + " removed successfully.");
     }
 
-    public void borrowBookManually(int bookId, int userId) {
+    private void initializeLoansTable() {
+        String createTableQuery = "CREATE TABLE IF NOT EXISTS loans (" +
+                "loan_id INT AUTO_INCREMENT PRIMARY KEY, " +
+                "book_id INT NOT NULL, " +
+                "user_id INT NOT NULL, " +
+                "issue_date DATE NOT NULL, " +
+                "due_date DATE NOT NULL, " +
+                "is_returned BOOLEAN DEFAULT FALSE, " +
+                "FOREIGN KEY (book_id) REFERENCES books(id), " +
+                "FOREIGN KEY (user_id) REFERENCES users(id)" +
+                ")";
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute(createTableQuery);
+            System.out.println("Loans table is ready.");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+//    public void borrowBookManually(int bookId, int userId) {
+//        try {
+//            // Check if the book is available
+//            Book book = catalog.getBooks().stream()
+//                    .filter(b -> b.getId() == bookId && b.isAvailable())
+//                    .findFirst()
+//                    .orElse(null);
+//
+//            if (book == null) {
+//                System.out.println("Book with ID " + bookId + " is not available for borrowing.");
+//                return;
+//            }
+//
+//            // Create a new loan record
+//            Loan loan = new Loan(loans.size() + 1, bookId, userId,
+//                    java.time.LocalDate.now(),
+//                    java.time.LocalDate.now().plusDays(14));
+//            loans.add(loan); // Add to the in-memory list
+//
+//            // Update book availability in the database
+//            updateBookAvailability(bookId, false);
+//            System.out.println("Book borrowed successfully! Loan details: " + loan);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            System.out.println("An error occurred while borrowing the book.");
+//        }
+//    }
+
+    public void borrowBook(int bookId, int userId) throws IllegalStateException, IllegalArgumentException {
         try {
             // Check if the book is available
-            Book book = catalog.getBooks().stream()
-                    .filter(b -> b.getId() == bookId && b.isAvailable())
-                    .findFirst()
-                    .orElse(null);
+            String checkBookQuery = "SELECT is_available FROM books WHERE id = ?";
+            try (PreparedStatement checkStmt = connection.prepareStatement(checkBookQuery)) {
+                checkStmt.setInt(1, bookId);
+                ResultSet rs = checkStmt.executeQuery();
 
-            if (book == null) {
-                System.out.println("Book with ID " + bookId + " is not available for borrowing.");
-                return;
+                if (rs.next()) {
+                    boolean isAvailable = rs.getBoolean("is_available");
+                    if (!isAvailable) {
+                        throw new IllegalStateException("The book is currently unavailable.");
+                    }
+                } else {
+                    throw new IllegalArgumentException("Book ID not found.");
+                }
             }
 
-            // Create a new loan record
-            Loan loan = new Loan(loans.size() + 1, bookId, userId,
-                    java.time.LocalDate.now(),
-                    java.time.LocalDate.now().plusDays(14));
-            loans.add(loan); // Add to the in-memory list
+            // Proceed with borrowing the book
+            String insertLoanQuery = "INSERT INTO loans (book_id, user_id, issue_date, due_date) VALUES (?, ?, ?, ?)";
+            try (PreparedStatement stmt = connection.prepareStatement(insertLoanQuery)) {
+                LocalDate issueDate = LocalDate.now();
+                LocalDate dueDate = issueDate.plusDays(7);
 
-            // Update book availability in the database
+                stmt.setInt(1, bookId);
+                stmt.setInt(2, userId);
+                stmt.setDate(3, Date.valueOf(issueDate));
+                stmt.setDate(4, Date.valueOf(dueDate));
+                stmt.executeUpdate();
+            }
+
+            // Mark the book as unavailable
             updateBookAvailability(bookId, false);
-            System.out.println("Book borrowed successfully! Loan details: " + loan);
-        } catch (Exception e) {
+
+            System.out.println("Book borrowed successfully.");
+        } catch (SQLException e) {
             e.printStackTrace();
-            System.out.println("An error occurred while borrowing the book.");
+            throw new IllegalStateException("Database error while borrowing the book: " + e.getMessage());
         }
     }
 
-    public void returnBookManually(int loanId) {
+
+
+
+//    public void returnBookManually(int loanId) {
+//        try {
+//            // Find the loan by its ID
+//            Loan loan = loans.stream()
+//                    .filter(l -> l.getLoanId() == loanId && !l.isReturned())
+//                    .findFirst()
+//                    .orElse(null);
+//
+//            if (loan == null) {
+//                System.out.println("Invalid Loan ID or the book is already returned.");
+//                return;
+//            }
+//
+//            // Update the loan status
+//            loan.setReturned(true);
+//
+//            // Make the book available again
+//            updateBookAvailability(loan.getBookId(), true);
+//            System.out.println("Book returned successfully! Loan ID: " + loanId);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            System.out.println("An error occurred while returning the book.");
+//        }
+//    }
+
+    public void returnBook(int bookId) throws IllegalArgumentException, IllegalStateException {
         try {
-            // Find the loan by its ID
-            Loan loan = loans.stream()
-                    .filter(l -> l.getLoanId() == loanId && !l.isReturned())
-                    .findFirst()
-                    .orElse(null);
+            String checkLoanQuery = "SELECT loan_id, is_returned FROM loans WHERE book_id = ? AND is_returned = FALSE";
+            try (PreparedStatement checkStmt = connection.prepareStatement(checkLoanQuery)) {
+                checkStmt.setInt(1, bookId);
+                ResultSet rs = checkStmt.executeQuery();
 
-            if (loan == null) {
-                System.out.println("Invalid Loan ID or the book is already returned.");
-                return;
+                if (rs.next()) {
+                    boolean isReturned = rs.getBoolean("is_returned");
+                    int loanId = rs.getInt("loan_id");
+
+                    if (isReturned) {
+                        throw new IllegalStateException("This book has already been returned.");
+                    }
+
+                    // Mark the loan as returned
+                    String updateLoanQuery = "UPDATE loans SET is_returned = TRUE WHERE loan_id = ?";
+                    try (PreparedStatement updateStmt = connection.prepareStatement(updateLoanQuery)) {
+                        updateStmt.setInt(1, loanId);
+                        updateStmt.executeUpdate();
+                    }
+
+                    // Mark the book as available
+                    updateBookAvailability(bookId, true);
+                    System.out.println("Book returned successfully.");
+                } else {
+                    throw new IllegalArgumentException("No active loan found for this Book ID.");
+                }
             }
-
-            // Update the loan status
-            loan.setReturned(true);
-
-            // Make the book available again
-            updateBookAvailability(loan.getBookId(), true);
-            System.out.println("Book returned successfully! Loan ID: " + loanId);
-        } catch (Exception e) {
+        } catch (SQLException e) {
             e.printStackTrace();
-            System.out.println("An error occurred while returning the book.");
+            throw new IllegalStateException("Database error while returning the book: " + e.getMessage());
         }
     }
+
+
 
     public void searchBookByKeyword(String keyword) {
         List<Book> results = catalog.searchBooks(keyword);
@@ -197,9 +300,20 @@ public class LibrarySystem {
         }
     }
 
+//    public void updateBookAvailability(int bookId, boolean isAvailable) {
+//        String query = "UPDATE books SET is_available = ? WHERE id = ?";
+//        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+//            stmt.setBoolean(1, isAvailable);
+//            stmt.setInt(2, bookId);
+//            stmt.executeUpdate();
+//        } catch (SQLException e) {
+//            e.printStackTrace();
+//        }
+//    }
+
     public void updateBookAvailability(int bookId, boolean isAvailable) {
-        String query = "UPDATE books SET is_available = ? WHERE id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+        String updateBookQuery = "UPDATE books SET is_available = ? WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(updateBookQuery)) {
             stmt.setBoolean(1, isAvailable);
             stmt.setInt(2, bookId);
             stmt.executeUpdate();
@@ -235,6 +349,28 @@ public class LibrarySystem {
         return users;
     }
 
+    public List<Loan> getAllLoans() {
+        List<Loan> loans = new ArrayList<>();
+        String getLoansQuery = "SELECT * FROM loans";
+        try (PreparedStatement stmt = connection.prepareStatement(getLoansQuery)) {
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                int loanId = rs.getInt("loan_id");
+                int bookId = rs.getInt("book_id");
+                int userId = rs.getInt("user_id");
+                LocalDate issueDate = rs.getDate("issue_date").toLocalDate();
+                LocalDate dueDate = rs.getDate("due_date").toLocalDate();
+                boolean isReturned = rs.getBoolean("is_returned");
+
+                Loan loan = new Loan(loanId, bookId, userId, issueDate, dueDate);
+                loan.setReturned(isReturned);
+                loans.add(loan);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return loans;
+    }
 
 
     /**
