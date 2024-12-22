@@ -4,6 +4,8 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+import java.sql.Connection;
+
 public class Catalog {
     private final Connection connection;
 
@@ -39,14 +41,24 @@ public class Catalog {
     }
 
     public void removeBook(int bookId) {
-        String query = "DELETE FROM books WHERE id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
-            stmt.setInt(1, bookId);
-            stmt.executeUpdate();
+        String deleteLoansQuery = "DELETE FROM loans WHERE book_id = ?";
+        String deleteBookQuery = "DELETE FROM books WHERE id = ?";
+
+        try (PreparedStatement deleteLoansStmt = connection.prepareStatement(deleteLoansQuery);
+             PreparedStatement deleteBookStmt = connection.prepareStatement(deleteBookQuery)) {
+
+            // Delete dependent rows in 'loans' table
+            deleteLoansStmt.setInt(1, bookId);
+            deleteLoansStmt.executeUpdate();
+
+            // Delete the book from 'books' table
+            deleteBookStmt.setInt(1, bookId);
+            deleteBookStmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
 
     public List<Book> searchBooks(String keyword) {
         String query = "SELECT * FROM books WHERE title LIKE ? OR author LIKE ?";
